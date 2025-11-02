@@ -15,7 +15,7 @@ export function Template20({ student, school, fields, ...props }) {
           />
           <div>
             <p className="text-sm font-semibold">{school.schoolName}</p>
-            <p className="text-xs text-gray-500">{school.address}</p>
+            <p className="truncate text-xs text-gray-500">{school.address}</p>
           </div>
         </div>
 

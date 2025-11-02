@@ -34,10 +34,8 @@ export function Template17({ student, school, fields, ...props }) {
             className="h-8 w-8 object-contain"
           />
           <div>
-            <p className="text-sm font-semibold truncate">
-              {school.schoolName}
-            </p>
-            <p className="text-xs text-gray-500 truncate">{school.address}</p>
+            <p className="text-sm font-semibold  ">{school.schoolName}</p>
+            <p className="truncate text-xs text-gray-500  ">{school.address}</p>
           </div>
         </div>
 

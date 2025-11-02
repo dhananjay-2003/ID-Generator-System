@@ -23,7 +23,9 @@ export function Template9({ student, school, fields, ...props }) {
               />
               <div>
                 <p className="text-sm font-bold">{school.schoolName}</p>
-                <p className="text-[10px] text-gray-500">{school.address}</p>
+                <p className="truncate text-[10px] text-gray-500">
+                  {school.address}
+                </p>
               </div>
             </div>
 

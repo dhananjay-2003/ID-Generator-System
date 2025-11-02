@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 export function Template8({ student, school, fields, ...props }) {
   return (
@@ -17,33 +17,47 @@ export function Template8({ student, school, fields, ...props }) {
                 crossOrigin="anonymous"
               />
             ) : (
-              <img src="/generic-school-logo.png" alt="" className="h-8 w-8 rounded object-contain" />
+              <img
+                src="/generic-school-logo.png"
+                alt=""
+                className="h-8 w-8 rounded object-contain"
+              />
             )}
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{school.schoolName}</p>
-              <p className="truncate text-xs text-muted-foreground">{school.address}</p>
+              <p className="  text-sm font-semibold">{school.schoolName}</p>
+              <p className=" truncate  text-xs text-muted-foreground">
+                {school.address}
+              </p>
             </div>
           </div>
-          {fields.name && <p className="text-lg font-semibold">{student.name || "Student Name"}</p>}
+          {fields.name && (
+            <p className="text-lg font-semibold">
+              {student.name || "Student Name"}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-x-3 text-xs">
             {fields.studentId && (
               <p>
-                <span className="text-muted-foreground">ID:</span> {student.id || "—"}
+                <span className="text-muted-foreground">ID:</span>{" "}
+                {student.id || "—"}
               </p>
             )}
             {fields.className && (
               <p>
-                <span className="text-muted-foreground">Class:</span> {student.className || "—"}
+                <span className="text-muted-foreground">Class:</span>{" "}
+                {student.className || "—"}
               </p>
             )}
             {fields.section && (
               <p>
-                <span className="text-muted-foreground">Section:</span> {student.section || "—"}
+                <span className="text-muted-foreground">Section:</span>{" "}
+                {student.section || "—"}
               </p>
             )}
             {fields.dob && (
               <p>
-                <span className="text-muted-foreground">DOB:</span> {student.dob || "—"}
+                <span className="text-muted-foreground">DOB:</span>{" "}
+                {student.dob || "—"}
               </p>
             )}
           </div>
@@ -57,13 +71,20 @@ export function Template8({ student, school, fields, ...props }) {
               crossOrigin="anonymous"
             />
           ) : (
-            <img src="/student-photo.jpg" alt="" className="h-[180px] w-[120px] rounded-md object-cover" />
+            <img
+              src="/student-photo.jpg"
+              alt=""
+              className="h-[180px] w-[120px] rounded-md object-cover"
+            />
           )}
         </div>
       </div>
-      <div className="p-2 text-center text-xs text-primary-foreground" style={{ background: "var(--accent, #0ea5e9)" }}>
+      <div
+        className="p-2 text-center text-xs text-primary-foreground"
+        style={{ background: "var(--accent, #0ea5e9)" }}
+      >
         {school.contact}
       </div>
     </div>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 export function TemplateBase({ student, school, fields, ...props }) {
   return (
@@ -17,51 +17,69 @@ export function TemplateBase({ student, school, fields, ...props }) {
               crossOrigin="anonymous"
             />
           ) : (
-            <img src="/generic-school-logo.png" alt="" className="h-8 w-8 rounded object-contain" />
+            <img
+              src="/generic-school-logo.png"
+              alt=""
+              className="h-8 w-8 rounded object-contain"
+            />
           )}
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{school.schoolName}</p>
-            <p className="truncate text-xs text-muted-foreground">{school.address}</p>
+            <p className=" text-sm font-semibold">{school.schoolName}</p>
+            <p className=" truncate  text-xs text-muted-foreground">
+              {school.address}
+            </p>
           </div>
         </div>
 
         <div className="mt-1">
-          {fields.name && <p className="text-pretty text-lg font-semibold">{student.name || "Student Name"}</p>}
+          {fields.name && (
+            <p className="text-pretty text-lg font-semibold">
+              {student.name || "Student Name"}
+            </p>
+          )}
           <div className="grid grid-cols-2 gap-x-3 text-xs">
             {fields.studentId && (
               <p>
-                <span className="text-muted-foreground">ID:</span> {student.id || "—"}
+                <span className="text-muted-foreground">ID:</span>{" "}
+                {student.id || "—"}
               </p>
             )}
             {fields.className && (
               <p>
-                <span className="text-muted-foreground">Class:</span> {student.className || "—"}
+                <span className="text-muted-foreground">Class:</span>{" "}
+                {student.className || "—"}
               </p>
             )}
             {fields.section && (
               <p>
-                <span className="text-muted-foreground">Section:</span> {student.section || "—"}
+                <span className="text-muted-foreground">Section:</span>{" "}
+                {student.section || "—"}
               </p>
             )}
             {fields.dob && (
               <p>
-                <span className="text-muted-foreground">DOB:</span> {student.dob || "—"}
+                <span className="text-muted-foreground">DOB:</span>{" "}
+                {student.dob || "—"}
               </p>
             )}
             {fields.phone && (
               <p className="col-span-2">
-                <span className="text-muted-foreground">Phone:</span> {student.phone || "—"}
+                <span className="text-muted-foreground">Phone:</span>{" "}
+                {student.phone || "—"}
               </p>
             )}
             {fields.address && (
               <p className="col-span-2 text-pretty">
-                <span className="text-muted-foreground">Address:</span> {student.address || "—"}
+                <span className="text-muted-foreground">Address:</span>{" "}
+                {student.address || "—"}
               </p>
             )}
           </div>
         </div>
 
-        <div className="mt-auto text-[10px] text-muted-foreground">{school.contact}</div>
+        <div className="mt-auto text-[10px] text-muted-foreground">
+          {school.contact}
+        </div>
       </div>
 
       <div
@@ -77,9 +95,13 @@ export function TemplateBase({ student, school, fields, ...props }) {
             crossOrigin="anonymous"
           />
         ) : (
-          <img src="/student-photo.jpg" alt="" className="h-[180px] w-[120px] rounded-md object-cover" />
+          <img
+            src="/student-photo.jpg"
+            alt=""
+            className="h-[180px] w-[120px] rounded-md object-cover"
+          />
         )}
       </div>
     </div>
-  )
+  );
 }

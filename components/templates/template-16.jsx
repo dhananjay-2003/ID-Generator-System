@@ -11,7 +11,9 @@ export function Template16({ student, school, ...props }) {
           className="h-8 w-8 mb-1"
         />
         <p className="text-sm font-bold">{school.schoolName}</p>
-        <p className="text-[10px] text-gray-500 mb-2">{school.address}</p>
+        <p className="truncate text-[10px] text-gray-500 mb-2">
+          {school.address}
+        </p>
         <p className="text-lg font-semibold">{student.name}</p>
         <p className="text-xs text-gray-600 mt-1">ID: {student.id}</p>
         <p className="text-xs text-gray-600">Class: {student.className}</p>

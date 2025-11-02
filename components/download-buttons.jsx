@@ -20,12 +20,8 @@ export function DownloadButtons({
   const HiddenContainer = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Render hidden all-cards container for bulk export
-  useEffect(() => {
-    // No-op: container is in JSX; we rely on it being in the tree
-  }, [templateKey, Templates, school, fields, students]);
-
-  async function captureNode(node, scale = 2) {
+  // Helper: capture a DOM node as image
+  async function captureNode(node, scale = 3) {
     const canvas = await html2canvas(node, {
       backgroundColor: null,
       scale,
@@ -36,6 +32,7 @@ export function DownloadButtons({
     return canvas.toDataURL("image/png");
   }
 
+  // Export currently visible student as PNG
   async function exportPNGCurrent() {
     try {
       setIsExporting(true);
@@ -54,23 +51,26 @@ export function DownloadButtons({
     }
   }
 
+  // Export all students as a ZIP of PNGs
   async function exportPNGBulk() {
     try {
       setIsExporting(true);
       const zip = new JSZip();
       const container = HiddenContainer.current;
       if (!container) return;
+
       const cards = Array.from(
         container.querySelectorAll("[data-html2canvas-card]")
       );
+
       for (let i = 0; i < cards.length; i++) {
         const card = cards[i];
         const dataUrl = await captureNode(card);
         const base64 = dataUrl.split(",")[1];
         zip.file(`id-card-${i + 1}.png`, base64, { base64: true });
-        // tiny delay to keep UI responsive
         await wait(10);
       }
+
       const blob = await zip.generateAsync({ type: "blob" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
@@ -83,46 +83,62 @@ export function DownloadButtons({
     }
   }
 
+  // ✅ Export all students as PDF (clean, no overlap)
   async function exportPDF() {
     try {
       setIsExporting(true);
-      const pdf = new jsPDF({ unit: "pt", format: "a4" });
+      const pdf = new jsPDF({ unit: "mm", format: "a4" });
       const container = HiddenContainer.current;
       if (!container) return;
+
       const cards = Array.from(
         container.querySelectorAll("[data-html2canvas-card]")
       );
-      let first = true;
+
+      // 🪪 Standard ID card size (credit-card dimensions)
+      const cardWidth = 85.6; // mm
+      const cardHeight = 54; // mm
+
+      // Layout and spacing
+      const marginX = 10;
+      const marginY = 10;
+      const gapX = 8;
+      const gapY = 8;
+
+      // 2 columns × 4 rows = 8 cards per page
+      const cardsPerRow = 2;
+      const cardsPerCol = 4;
+
+      let x = marginX;
+      let y = marginY;
+      let cardCount = 0;
+
       for (let i = 0; i < cards.length; i++) {
-        const dataUrl = await captureNode(cards[i]);
-        const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.src = dataUrl;
-        await new Promise((res) => {
-          img.onload = () => res();
-          img.onerror = () => res();
-        });
-        // Fit image to A4 page with margins
-        const pageW = 595.28; // A4 width in pt
-        const pageH = 841.89; // A4 height in pt
-        const margin = 24;
-        const targetW = pageW - margin * 2;
-        const imgRatio = img.width / img.height;
-        const targetH = targetW / imgRatio;
-        if (!first) pdf.addPage();
-        pdf.addImage(
-          dataUrl,
-          "PNG",
-          margin,
-          Math.max(margin, (pageH - targetH) / 2),
-          targetW,
-          targetH,
-          undefined,
-          "FAST"
-        );
-        first = false;
+        const dataUrl = await captureNode(cards[i], 3); // 3x scale for clarity
+        pdf.addImage(dataUrl, "PNG", x, y, cardWidth, cardHeight);
+
+        cardCount++;
+        x += cardWidth + gapX;
+
+        // Move to next row
+        if (cardCount % cardsPerRow === 0) {
+          x = marginX;
+          y += cardHeight + gapY;
+        }
+
+        // New page after 8 cards
+        if (
+          cardCount % (cardsPerRow * cardsPerCol) === 0 &&
+          i < cards.length - 1
+        ) {
+          pdf.addPage();
+          x = marginX;
+          y = marginY;
+        }
+
         await wait(10);
       }
+
       pdf.save("id-cards.pdf");
     } finally {
       setIsExporting(false);
@@ -134,6 +150,8 @@ export function DownloadButtons({
   return (
     <div className="rounded-lg border bg-card p-4">
       <h2 className="mb-2 text-lg font-medium">Export</h2>
+
+      {/* Export buttons */}
       <div className="flex flex-wrap gap-2">
         <button
           className="rounded-md bg-primary px-3 py-2 text-primary-foreground disabled:opacity-50"
@@ -142,6 +160,7 @@ export function DownloadButtons({
         >
           {isExporting ? "Exporting..." : "PNG (current)"}
         </button>
+
         <button
           className="rounded-md border px-3 py-2 disabled:opacity-50"
           onClick={exportPNGBulk}
@@ -149,6 +168,7 @@ export function DownloadButtons({
         >
           {isExporting ? "Exporting..." : `PNG ZIP (${students.length})`}
         </button>
+
         <button
           className="rounded-md border px-3 py-2 disabled:opacity-50"
           onClick={exportPDF}
@@ -158,7 +178,7 @@ export function DownloadButtons({
         </button>
       </div>
 
-      {/* Hidden render of all cards for bulk export */}
+      {/* Hidden render container for bulk export */}
       <div
         ref={HiddenContainer}
         className="pointer-events-none absolute left-[-9999px] top-[-9999px] h-0 w-0 overflow-hidden"

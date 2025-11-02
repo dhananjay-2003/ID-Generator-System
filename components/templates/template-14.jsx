@@ -16,7 +16,9 @@ export function Template14({ student, school, ...props }) {
             />
             <div>
               <p className="text-sm font-bold">{school.schoolName}</p>
-              <p className="text-[10px] text-gray-500">{school.address}</p>
+              <p className="truncate text-[10px] text-gray-500">
+                {school.address}
+              </p>
             </div>
           </div>
           <p className="mt-3 text-lg font-semibold">{student.name}</p>

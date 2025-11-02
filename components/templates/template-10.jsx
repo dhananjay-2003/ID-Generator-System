@@ -29,7 +29,9 @@ export function Template10({ student, school, fields, ...props }) {
               >
                 {school.schoolName}
               </h3>
-              <p className="text-[10px] text-gray-500">{school.address}</p>
+              <p className="truncate text-[10px] text-gray-500">
+                {school.address}
+              </p>
             </div>
           </div>
 

@@ -1,63 +1,146 @@
 "use client";
 
-export function Template1({ student, school, fields, ...props }) {
+export function Template1({ student, school, fields = {}, ...props }) {
   return (
     <div
       {...props}
       className="relative flex h-[260px] w-[410px] overflow-hidden rounded-xl border bg-white shadow-md text-gray-800"
+      style={{ "--accent": school?.accent || "#2563eb" }}
     >
       {/* Background Accent */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent,#2563eb)]/20 to-transparent" />
-      <div className="absolute right-0 top-0 h-full w-[120px] bg-[var(--accent,#2563eb)] rotate-6 origin-top-right" />
+      <div className="absolute inset-0 bg-gradient-to-tr from-[var(--accent,#2563eb)]/15 via-transparent to-transparent" />
+      <div className="absolute right-0 top-0 h-full w-[120px] bg-[var(--accent,#2563eb)] rotate-6 origin-top-right rounded-l-xl" />
 
-      {/* Content */}
-      <div className="relative z-10 flex w-full items-center p-4">
-        <div className="flex-1 space-y-2">
-          <div className="flex items-center gap-2">
-            <img
-              src={school.logoDataUrl || "/generic-school-logo.png"}
-              alt="School Logo"
-              className="h-10 w-10 rounded-full object-cover"
-            />
-            <div>
-              <h3 className="text-sm font-bold">{school.schoolName}</h3>
-              <p className="text-[10px] text-gray-500">{school.address}</p>
+      {/* Content Wrapper */}
+      <div className="relative z-10 flex w-full justify-between items-start p-4">
+        {/* LEFT SECTION */}
+        <div className="flex-1 flex flex-col justify-between h-full pr-3">
+          {/* School Info */}
+          <div>
+            {(fields.logo !== false ||
+              fields.schoolName !== false ||
+              fields.schoolAddress !== false) && (
+              <div className="flex items-center gap-2 mb-2">
+                {fields.logo !== false && (
+                  <img
+                    src={school?.logoDataUrl || "/generic-school-logo.png"}
+                    alt="School Logo"
+                    className="h-10 w-10 rounded-full object-cover border border-gray-200 shadow-sm"
+                  />
+                )}
+                <div className="max-w-[200px]">
+                  {fields.schoolName !== false && (
+                    <h3 className="text-sm font-semibold truncate">
+                      {school?.schoolName || "School Name"}
+                    </h3>
+                  )}
+                  {fields.schoolAddress !== false && (
+                    <p className="text-[10px] text-gray-500 leading-tight truncate">
+                      {school?.schoolAddress || "School Address"}
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Student Info */}
+            {fields.name !== false && (
+              <h2 className="text-lg font-semibold mt-1 leading-snug break-words">
+                {student?.name || "Student Name"}
+              </h2>
+            )}
+
+            {/* Compact Grid Layout for Info */}
+            <div className="grid grid-cols-2 gap-x-2 gap-y-[2px] text-xs mt-1">
+              {fields.id !== false && (
+                <p>
+                  <span className="text-gray-500">ID:</span>{" "}
+                  {student?.id || "—"}
+                </p>
+              )}
+              {fields.className !== false && (
+                <p>
+                  <span className="text-gray-500">Class:</span>{" "}
+                  {student?.className || "—"}
+                </p>
+              )}
+              {fields.section !== false && (
+                <p>
+                  <span className="text-gray-500">Section:</span>{" "}
+                  {student?.section || "—"}
+                </p>
+              )}
+              {fields.dob !== false && (
+                <p>
+                  <span className="text-gray-500">DOB:</span>{" "}
+                  {student?.dob || "—"}
+                </p>
+              )}
+              {fields.phone !== false && (
+                <p className="col-span-2">
+                  <span className="text-gray-500">Phone:</span>{" "}
+                  {student?.phone || "—"}
+                </p>
+              )}
+              {fields.studentAddress !== false && (
+                <p
+                  className="col-span-2 text-ellipsis overflow-hidden text-gray-700"
+                  style={{
+                    display: "-webkit-box",
+                    WebkitLineClamp: 2,
+                    WebkitBoxOrient: "vertical",
+                    maxHeight: "2.5em",
+                  }}
+                >
+                  <span className="text-gray-500">Address:</span>{" "}
+                  {student?.address || "—"}
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="mt-2">
-            <p className="text-lg font-semibold">
-              {student.name || "Student Name"}
-            </p>
-            <div className="text-xs space-y-1">
-              <p>
-                <span className="text-gray-500">ID:</span> {student.id || "—"}
-              </p>
-              <p>
-                <span className="text-gray-500">Class:</span>{" "}
-                {student.className || "—"}
-              </p>
-              <p>
-                <span className="text-gray-500">Section:</span>{" "}
-                {student.section || "—"}
-              </p>
-              <p>
-                <span className="text-gray-500">DOB:</span> {student.dob || "—"}
-              </p>
-            </div>
+          {/* Bottom Area */}
+          <div className="flex justify-between items-end mt-2">
+            {fields.principalSign !== false && (
+              <div className="flex flex-col items-center">
+                <img
+                  src={school?.principalSign || "/principal-sign.png"}
+                  alt="Principal Sign"
+                  className="h-7 object-contain opacity-90"
+                />
+                <p className="text-[9px] text-gray-600">Principal</p>
+              </div>
+            )}
+            {fields.schoolStamp !== false && (
+              <div className="flex flex-col items-center">
+                <img
+                  src={school?.schoolStamp || "/school-stamp.png"}
+                  alt="School Stamp"
+                  className="h-9 w-9 object-contain opacity-80"
+                />
+                <p className="text-[9px] text-gray-600">Authorized Stamp</p>
+              </div>
+            )}
           </div>
-
-          <div className="mt-3 text-[10px] text-gray-500">{school.contact}</div>
         </div>
 
-        {/* Photo */}
-        <div className="ml-3">
-          <img
-            src={student.photoUrl || "/student-photo.jpg"}
-            alt="Student"
-            className="h-[170px] w-[120px] rounded-lg object-cover border border-white shadow"
-          />
-        </div>
+        {/* RIGHT SECTION - PHOTO */}
+        {fields.photoUrl !== false && (
+          <div className="flex flex-col items-center justify-between h-full">
+            <div className="h-[170px] w-[120px] rounded-lg overflow-hidden border border-white shadow-md bg-gray-50 flex-shrink-0">
+              <img
+                src={student?.photoUrl || "/student-photo.jpg"}
+                alt="Student"
+                className="h-full w-full object-cover"
+              />
+            </div>
+            {fields.contact !== false && (
+              <p className="text-[9px] text-gray-600 mt-2">
+                Contact: {school?.contact || "—"}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

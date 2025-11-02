@@ -30,10 +30,12 @@ export function Template11({ student, school, fields, ...props }) {
               />
             )}
             <div>
-              <p className="font-semibold text-sm text-gray-800 truncate">
+              <p className="font-semibold text-sm text-gray-800  ">
                 {school.schoolName}
               </p>
-              <p className="text-xs text-gray-500 truncate">{school.address}</p>
+              <p className="truncate text-xs text-gray-500  ">
+                {school.address}
+              </p>
             </div>
           </div>
 

@@ -39,12 +39,8 @@ export function Template7({ student, school, fields, ...props }) {
             />
           )}
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">
-              {school.schoolName}
-            </p>
-            <p className="truncate text-xs text-muted-foreground">
-              {school.address}
-            </p>
+            <p className="  text-sm font-semibold">{school.schoolName}</p>
+            <p className=" truncate  text-xs text-muted-foreground">{school.address}</p>
           </div>
         </div>
         {fields.name && (

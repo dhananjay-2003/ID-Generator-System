@@ -10,7 +10,9 @@ export function Template5({ student, school, ...props }) {
         className="h-10 w-10 mb-1"
       />
       <p className="text-sm font-bold">{school.schoolName}</p>
-      <p className="text-[10px] text-gray-500 mb-2">{school.address}</p>
+      <p className="truncate text-[10px] text-gray-500 mb-2">
+        {school.address}
+      </p>
       <img
         src={student.photoUrl || "/student-photo.jpg"}
         alt="Student"
