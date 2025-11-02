@@ -1,6 +1,6 @@
 "use client";
-import { useEffect, useRef, useState } from "react";
-import html2canvas from "html2canvas-pro";
+import { useRef, useState } from "react";
+import * as htmlToImage from "html-to-image";
 import JSZip from "jszip";
 import { jsPDF } from "jspdf";
 import { TemplateBase } from "./templates/template-base";
@@ -18,24 +18,16 @@ async function waitForImages(node, timeout = 5000) {
         new Promise((resolve) => {
           if (!img.src) return resolve();
           if (img.complete && img.naturalWidth !== 0) return resolve();
-          const onLoad = () => {
-            cleanup();
-            resolve();
-          };
-          const onError = () => {
-            cleanup();
-            resolve();
-          };
-          const cleanup = () => {
+          const onLoad = () => cleanup(resolve);
+          const onError = () => cleanup(resolve);
+          const cleanup = (r) => {
             img.removeEventListener("load", onLoad);
             img.removeEventListener("error", onError);
+            r();
           };
           img.addEventListener("load", onLoad);
           img.addEventListener("error", onError);
-          setTimeout(() => {
-            cleanup();
-            resolve();
-          }, timeout);
+          setTimeout(() => cleanup(resolve), timeout);
         })
     )
   );
@@ -46,12 +38,12 @@ async function waitForFonts() {
     try {
       await document.fonts.ready;
     } catch {
-      /* ignore */
+      /* ignore font load errors */
     }
   }
 }
 
-// ✅ FIXED capture function — matches preview perfectly
+// ✅ Perfect-capture function (uses html-to-image)
 async function captureNode(node) {
   await waitForImages(node);
   await waitForFonts();
@@ -59,24 +51,21 @@ async function captureNode(node) {
 
   const width = 410;
   const height = 260;
-  const scale = 2;
+  const scale = 2; // High DPI output
 
-  node.style.transform = "none";
-  node.style.fontSmoothing = "antialiased";
-
-  const canvas = await html2canvas(node, {
+  const dataUrl = await htmlToImage.toPng(node, {
     backgroundColor: "#ffffff",
     width,
     height,
-    scale,
-    useCORS: true,
-    scrollX: 0,
-    scrollY: 0,
-    windowWidth: width,
-    windowHeight: height,
+    pixelRatio: scale,
+    cacheBust: true,
+    style: {
+      transform: "none",
+      fontSmoothing: "antialiased",
+    },
   });
 
-  return canvas.toDataURL("image/png");
+  return dataUrl;
 }
 
 export function DownloadButtons({
@@ -89,6 +78,7 @@ export function DownloadButtons({
   const HiddenContainer = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
 
+  // ✅ Export only current preview as PNG
   async function exportPNGCurrent() {
     try {
       setIsExporting(true);
@@ -107,6 +97,7 @@ export function DownloadButtons({
     }
   }
 
+  // ✅ Export all students as zipped PNGs
   async function exportPNGBulk() {
     try {
       setIsExporting(true);
@@ -123,7 +114,7 @@ export function DownloadButtons({
         const dataUrl = await captureNode(card);
         const base64 = dataUrl.split(",")[1];
         zip.file(`id-card-${i + 1}.png`, base64, { base64: true });
-        await wait(10);
+        await wait(20);
       }
 
       const blob = await zip.generateAsync({ type: "blob" });
@@ -138,6 +129,7 @@ export function DownloadButtons({
     }
   }
 
+  // ✅ Export all students as a multi-page PDF
   async function exportPDF() {
     try {
       setIsExporting(true);
@@ -183,7 +175,7 @@ export function DownloadButtons({
           y = marginY;
         }
 
-        await wait(10);
+        await wait(20);
       }
 
       pdf.save("id-cards.pdf");
@@ -224,7 +216,7 @@ export function DownloadButtons({
         </button>
       </div>
 
-      {/* Hidden render container for bulk export */}
+      {/* Hidden container for bulk/PDF exports */}
       <div
         ref={HiddenContainer}
         aria-hidden="true"
@@ -238,7 +230,7 @@ export function DownloadButtons({
           pointerEvents: "none",
         }}
       >
-        <div style={{ "--accent": school.accent }}>
+        <div style={{ "--accent": school?.accent }}>
           {students.map((s, i) => (
             <div
               key={i}
