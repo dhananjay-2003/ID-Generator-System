@@ -4,8 +4,16 @@ export function Template1({ student, school, fields = {}, ...props }) {
   return (
     <div
       {...props}
+      data-template-frame
       className="relative flex h-[260px] w-[410px] overflow-hidden rounded-xl border bg-white shadow-md text-gray-800"
-      style={{ "--accent": school?.accent || "#2563eb" }}
+      style={{
+        "--accent": school?.accent || "#2563eb",
+        fontFamily: "Inter, Arial, sans-serif",
+        lineHeight: "1.2",
+        letterSpacing: "0px",
+        transform: "scale(1)",
+        transformOrigin: "top left",
+      }}
     >
       {/* Background Accent */}
       <div className="absolute inset-0 bg-gradient-to-tr from-[var(--accent,#2563eb)]/15 via-transparent to-transparent" />
@@ -26,16 +34,18 @@ export function Template1({ student, school, fields = {}, ...props }) {
                     src={school?.logoDataUrl || "/generic-school-logo.png"}
                     alt="School Logo"
                     className="h-10 w-10 rounded-full object-cover border border-gray-200 shadow-sm"
+                    crossOrigin="anonymous"
+                    loading="eager"
                   />
                 )}
                 <div className="max-w-[200px]">
                   {fields.schoolName !== false && (
-                    <h3 className="text-sm font-semibold truncate">
+                    <h3 className="text-sm font-semibold truncate leading-tight">
                       {school?.schoolName || "School Name"}
                     </h3>
                   )}
                   {fields.schoolAddress !== false && (
-                    <p className="text-[10px] text-gray-500 leading-tight truncate">
+                    <p className="text-[10px] text-gray-500 leading-[1.1] truncate">
                       {school?.schoolAddress || "School Address"}
                     </p>
                   )}
@@ -45,13 +55,16 @@ export function Template1({ student, school, fields = {}, ...props }) {
 
             {/* Student Info */}
             {fields.name !== false && (
-              <h2 className="text-lg font-semibold mt-1 leading-snug break-words">
+              <h2 className="text-lg font-semibold mt-1 leading-[1.15] break-words">
                 {student?.name || "Student Name"}
               </h2>
             )}
 
             {/* Compact Grid Layout for Info */}
-            <div className="grid grid-cols-2 gap-x-2 gap-y-[2px] text-xs mt-1">
+            <div
+              className="grid grid-cols-2 gap-x-2 gap-y-[2px] text-xs mt-1 text-gray-800"
+              style={{ lineHeight: "1.2" }}
+            >
               {fields.id !== false && (
                 <p>
                   <span className="text-gray-500">ID:</span>{" "}
@@ -84,12 +97,13 @@ export function Template1({ student, school, fields = {}, ...props }) {
               )}
               {fields.studentAddress !== false && (
                 <p
-                  className="col-span-2 text-ellipsis overflow-hidden text-gray-700"
+                  className="col-span-2 text-gray-700 overflow-hidden"
                   style={{
                     display: "-webkit-box",
                     WebkitLineClamp: 2,
                     WebkitBoxOrient: "vertical",
-                    maxHeight: "2.5em",
+                    maxHeight: "2.4em",
+                    lineHeight: "1.2",
                   }}
                 >
                   <span className="text-gray-500">Address:</span>{" "}
@@ -106,9 +120,18 @@ export function Template1({ student, school, fields = {}, ...props }) {
                 <img
                   src={school?.principalSign || "/principal-sign.png"}
                   alt="Principal Sign"
-                  className="h-7 object-contain opacity-90"
+                  crossOrigin="anonymous"
+                  loading="eager"
+                  className="object-contain opacity-90"
+                  style={{
+                    width: "auto",
+                    height: "26px",
+                    marginBottom: "2px",
+                  }}
                 />
-                <p className="text-[9px] text-gray-600">Principal</p>
+                <p className="text-[9px] text-gray-600 leading-none">
+                  Principal
+                </p>
               </div>
             )}
             {fields.schoolStamp !== false && (
@@ -116,9 +139,18 @@ export function Template1({ student, school, fields = {}, ...props }) {
                 <img
                   src={school?.schoolStamp || "/school-stamp.png"}
                   alt="School Stamp"
-                  className="h-9 w-9 object-contain opacity-80"
+                  crossOrigin="anonymous"
+                  loading="eager"
+                  className="object-contain opacity-80"
+                  style={{
+                    width: "34px",
+                    height: "34px",
+                    marginBottom: "2px",
+                  }}
                 />
-                <p className="text-[9px] text-gray-600">Authorized Stamp</p>
+                <p className="text-[9px] text-gray-600 leading-none">
+                  Authorized Stamp
+                </p>
               </div>
             )}
           </div>
@@ -132,10 +164,12 @@ export function Template1({ student, school, fields = {}, ...props }) {
                 src={student?.photoUrl || "/student-photo.jpg"}
                 alt="Student"
                 className="h-full w-full object-cover"
+                crossOrigin="anonymous"
+                loading="eager"
               />
             </div>
             {fields.contact !== false && (
-              <p className="text-[9px] text-gray-600 mt-2">
+              <p className="text-[9px] text-gray-600 mt-2 leading-none">
                 Contact: {school?.contact || "—"}
               </p>
             )}

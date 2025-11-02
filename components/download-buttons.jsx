@@ -10,6 +10,75 @@ function wait(ms) {
   return new Promise((res) => setTimeout(res, ms));
 }
 
+async function waitForImages(node, timeout = 5000) {
+  const imgs = Array.from(node.querySelectorAll("img"));
+  await Promise.all(
+    imgs.map(
+      (img) =>
+        new Promise((resolve) => {
+          if (!img.src) return resolve();
+          if (img.complete && img.naturalWidth !== 0) return resolve();
+          const onLoad = () => {
+            cleanup();
+            resolve();
+          };
+          const onError = () => {
+            cleanup();
+            resolve();
+          };
+          const cleanup = () => {
+            img.removeEventListener("load", onLoad);
+            img.removeEventListener("error", onError);
+          };
+          img.addEventListener("load", onLoad);
+          img.addEventListener("error", onError);
+          setTimeout(() => {
+            cleanup();
+            resolve();
+          }, timeout);
+        })
+    )
+  );
+}
+
+async function waitForFonts() {
+  if (document?.fonts?.ready) {
+    try {
+      await document.fonts.ready;
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+// ✅ FIXED capture function — matches preview perfectly
+async function captureNode(node) {
+  await waitForImages(node);
+  await waitForFonts();
+  await wait(30);
+
+  const width = 410;
+  const height = 260;
+  const scale = 2;
+
+  node.style.transform = "none";
+  node.style.fontSmoothing = "antialiased";
+
+  const canvas = await html2canvas(node, {
+    backgroundColor: "#ffffff",
+    width,
+    height,
+    scale,
+    useCORS: true,
+    scrollX: 0,
+    scrollY: 0,
+    windowWidth: width,
+    windowHeight: height,
+  });
+
+  return canvas.toDataURL("image/png");
+}
+
 export function DownloadButtons({
   templateKey,
   Templates,
@@ -20,19 +89,6 @@ export function DownloadButtons({
   const HiddenContainer = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // Helper: capture a DOM node as image
-  async function captureNode(node, scale = 3) {
-    const canvas = await html2canvas(node, {
-      backgroundColor: null,
-      scale,
-      useCORS: true,
-      imageTimeout: 0,
-      logging: false,
-    });
-    return canvas.toDataURL("image/png");
-  }
-
-  // Export currently visible student as PNG
   async function exportPNGCurrent() {
     try {
       setIsExporting(true);
@@ -51,7 +107,6 @@ export function DownloadButtons({
     }
   }
 
-  // Export all students as a ZIP of PNGs
   async function exportPNGBulk() {
     try {
       setIsExporting(true);
@@ -83,7 +138,6 @@ export function DownloadButtons({
     }
   }
 
-  // ✅ Export all students as PDF (clean, no overlap)
   async function exportPDF() {
     try {
       setIsExporting(true);
@@ -95,17 +149,12 @@ export function DownloadButtons({
         container.querySelectorAll("[data-html2canvas-card]")
       );
 
-      // 🪪 Standard ID card size (credit-card dimensions)
       const cardWidth = 85.6; // mm
       const cardHeight = 54; // mm
-
-      // Layout and spacing
       const marginX = 10;
       const marginY = 10;
       const gapX = 8;
       const gapY = 8;
-
-      // 2 columns × 4 rows = 8 cards per page
       const cardsPerRow = 2;
       const cardsPerCol = 4;
 
@@ -114,19 +163,17 @@ export function DownloadButtons({
       let cardCount = 0;
 
       for (let i = 0; i < cards.length; i++) {
-        const dataUrl = await captureNode(cards[i], 3); // 3x scale for clarity
+        const dataUrl = await captureNode(cards[i]);
         pdf.addImage(dataUrl, "PNG", x, y, cardWidth, cardHeight);
 
         cardCount++;
         x += cardWidth + gapX;
 
-        // Move to next row
         if (cardCount % cardsPerRow === 0) {
           x = marginX;
           y += cardHeight + gapY;
         }
 
-        // New page after 8 cards
         if (
           cardCount % (cardsPerRow * cardsPerCol) === 0 &&
           i < cards.length - 1
@@ -151,7 +198,6 @@ export function DownloadButtons({
     <div className="rounded-lg border bg-card p-4">
       <h2 className="mb-2 text-lg font-medium">Export</h2>
 
-      {/* Export buttons */}
       <div className="flex flex-wrap gap-2">
         <button
           className="rounded-md bg-primary px-3 py-2 text-primary-foreground disabled:opacity-50"
@@ -181,12 +227,30 @@ export function DownloadButtons({
       {/* Hidden render container for bulk export */}
       <div
         ref={HiddenContainer}
-        className="pointer-events-none absolute left-[-9999px] top-[-9999px] h-0 w-0 overflow-hidden"
         aria-hidden="true"
+        style={{
+          position: "absolute",
+          left: "-10000px",
+          top: "0px",
+          width: "410px",
+          height: "260px",
+          visibility: "visible",
+          pointerEvents: "none",
+        }}
       >
         <div style={{ "--accent": school.accent }}>
           {students.map((s, i) => (
-            <div key={i} data-html2canvas-card className="inline-block">
+            <div
+              key={i}
+              data-html2canvas-card
+              style={{
+                width: "410px",
+                height: "260px",
+                overflow: "hidden",
+                borderRadius: "12px",
+                marginBottom: "12px",
+              }}
+            >
               <TemplateComp
                 data-template-frame
                 school={school}

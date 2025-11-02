@@ -25,6 +25,38 @@ export function DataUploader({
   const principalSignRef = useRef(null);
   const stampRef = useRef(null);
 
+  function downloadSampleSheet(format = "xlsx") {
+    const sampleData = [
+      {
+        studentId: "S-1",
+        name: "John Doe",
+        className: "10",
+        section: "A",
+        dob: "2008-05-12",
+        phone: "9876543210",
+        address: "123 Main Street, City",
+        photoUrl: "https://example.com/photo.jpg",
+      },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(sampleData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+
+    if (format === "xlsx") {
+      XLSX.writeFile(workbook, "Sample_Student_Data.xlsx");
+    } else {
+      const csv = XLSX.utils.sheet_to_csv(worksheet);
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "Sample_Student_Data.csv";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  }
+
   // ---------- File Handlers ----------
   async function handleSheetUpload(e) {
     const file = e.target.files?.[0];
@@ -157,6 +189,13 @@ export function DataUploader({
         >
           Import XLSX
         </button>
+        <button
+          onClick={() => downloadSampleSheet("csv")}
+          className="rounded-md bg-primary px-3 py-2 text-primary-foreground"
+        >
+          Download Sample CSV
+        </button>
+
         <input
           ref={fileRef}
           type="file"
@@ -166,7 +205,6 @@ export function DataUploader({
         />
 
         <label className="col-span-2 block">
-          <span className="mb-1 block text-sm">Import CSV</span>
           <input
             type="file"
             accept=".csv"
