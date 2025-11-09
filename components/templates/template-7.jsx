@@ -32,7 +32,7 @@ export function Template7({ student, school, fields = {}, ...props }) {
           {fields.principalSign !== false && (
             <div className="flex flex-col items-center">
               <img
-                src={school?.principalSign || "/principal-sign.png"}
+                src={school?.principalSign || "/image.png"}
                 alt="Principal Sign"
                 className="object-contain opacity-90"
                 style={{ height: "26px", marginBottom: "2px" }}
@@ -44,7 +44,7 @@ export function Template7({ student, school, fields = {}, ...props }) {
           {fields.schoolStamp !== false && (
             <div className="flex flex-col items-center">
               <img
-                src={school?.schoolStamp || "/school-stamp.png"}
+                src={school?.schoolStamp || "/placeholder-logo.png"}
                 alt="School Stamp"
                 className="object-contain opacity-80"
                 style={{ height: "34px", marginBottom: "2px" }}

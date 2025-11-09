@@ -140,7 +140,7 @@ export function Template5({ student, school, fields = {}, ...props }) {
             {fields.principalSign !== false && (
               <div className="flex flex-col items-center">
                 <img
-                  src={school?.principalSign || "/principal-sign.png"}
+                  src={school?.principalSign || "/image.png"}
                   alt="Principal Sign"
                   crossOrigin="anonymous"
                   loading="eager"
@@ -156,7 +156,7 @@ export function Template5({ student, school, fields = {}, ...props }) {
             {fields.schoolStamp !== false && (
               <div className="flex flex-col items-center">
                 <img
-                  src={school?.schoolStamp || "/school-stamp.png"}
+                  src={school?.schoolStamp || "/placeholder-logo.png"}
                   alt="School Stamp"
                   crossOrigin="anonymous"
                   loading="eager"

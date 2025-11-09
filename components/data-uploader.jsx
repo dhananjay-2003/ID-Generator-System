@@ -20,11 +20,14 @@ export function DataUploader({
   setSchool,
 }) {
   const [showSchoolDetails, setShowSchoolDetails] = useState(false);
+  const [uploadedPhotos, setUploadedPhotos] = useState([]);
   const fileRef = useRef(null);
   const logoRef = useRef(null);
   const principalSignRef = useRef(null);
   const stampRef = useRef(null);
+  const photosRef = useRef(null);
 
+  // ---------- Sample Sheet ----------
   function downloadSampleSheet(format = "xlsx") {
     const sampleData = [
       {
@@ -35,7 +38,7 @@ export function DataUploader({
         dob: "2008-05-12",
         phone: "9876543210",
         address: "123 Main Street, City",
-        photoUrl: "https://example.com/photo.jpg",
+        photoUrl: "passport photo.jpg",
       },
     ];
 
@@ -57,7 +60,118 @@ export function DataUploader({
     }
   }
 
-  // ---------- File Handlers ----------
+  // ---------- Normalize Headers ----------
+  function normalizeHeaders(rows) {
+    return rows.map((row) => {
+      const clean = {};
+      Object.keys(row).forEach((key) => {
+        const normalizedKey = key.trim().replace(/\s+/g, "").toLowerCase();
+        clean[normalizedKey] = row[key];
+      });
+      return clean;
+    });
+  }
+
+  // ---------- File Processing ----------
+  // ---------- Convert Blob → Base64 ----------
+  function blobToBase64(blob) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  // ---------- Read File → Base64 ----------
+  function readFileAsDataURL(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // ---------- Process Students ----------
+  async function processStudents(rows, uploadedPhotos = []) {
+    console.log("Processing rows:", rows);
+    if (!rows.length) return;
+
+    // Normalize headers
+    const normalized = rows.map((row) => {
+      const obj = {};
+      Object.entries(row).forEach(([key, val]) => {
+        obj[key.trim().toLowerCase()] = val;
+      });
+      return obj;
+    });
+
+    // Process each student row
+    const parsed = await Promise.all(
+      normalized.map(async (row, idx) => {
+        let rawPhoto = String(row.photourl || "")
+          .trim()
+          .replace(/^"|"$/g, "");
+        let resolvedPhoto = "";
+
+        try {
+          // Extract filename (for uploaded photo match)
+          const fileName = rawPhoto.split("\\").pop().split("/").pop().trim();
+
+          // ✅ 1. If photo was uploaded separately (matched by filename)
+          const matched = uploadedPhotos.find(
+            (file) => file.name.toLowerCase() === fileName.toLowerCase()
+          );
+
+          if (matched) {
+            resolvedPhoto = await readFileAsDataURL(matched);
+          }
+          // ✅ 2. Base64 directly from Excel
+          else if (rawPhoto.startsWith("data:image")) {
+            resolvedPhoto = rawPhoto;
+          }
+          // ✅ 3. Remote HTTP URL
+          else if (rawPhoto.startsWith("http")) {
+            resolvedPhoto = rawPhoto;
+          }
+          // 🚫 4. Local file path (cannot access via browser)
+          else if (
+            rawPhoto.startsWith("C:\\") ||
+            rawPhoto.startsWith("/") ||
+            rawPhoto.includes(":\\")
+          ) {
+            console.warn(`⚠️ Local path ignored: ${rawPhoto}`);
+            resolvedPhoto = "/student-photo.jpg";
+          }
+          // 🧩 5. Fallback default
+          else {
+            resolvedPhoto = "/student-photo.jpg";
+          }
+        } catch (err) {
+          console.error("❌ Error resolving photo:", err);
+          resolvedPhoto = "/student-photo.jpg";
+        }
+
+        return {
+          studentId: String(row.studentid || `S-${idx + 1}`),
+          name: String(row.name || ""),
+          className: String(row.studentid || row.class || ""),
+          section: String(row.section || ""),
+          dob: String(row.dob || ""),
+          phone: String(row.phone || ""),
+          address: String(row.address || ""),
+          photoUrl: resolvedPhoto,
+        };
+      })
+    );
+
+    console.log("✅ Parsed students:", parsed);
+    setStudents(parsed);
+    if (parsed.length) setCurrentIndex(0);
+  }
+
+  // ---------- XLSX Upload ----------
   async function handleSheetUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -69,57 +183,125 @@ export function DataUploader({
         defval: "",
       });
 
-      const parsed = ws.map((row, idx) => ({
-        id: String(row.studentId || row.id || `S-${idx + 1}`),
-        name: String(row.name || ""),
-        className: String(row.class || row.className || ""),
-        section: String(row.section || ""),
-        dob: String(row.dob || ""),
-        phone: String(row.phone || ""),
-        address: String(row.address || ""), // student address only
-        photoUrl: String(row.photoUrl || ""),
-      }));
+      const processed = await Promise.all(
+        ws.map(async (row, idx) => {
+          const student = {};
+          Object.entries(row).forEach(([key, val]) => {
+            student[key.trim().toLowerCase()] = val;
+          });
 
-      setStudents(parsed.length ? parsed : students);
-      if (parsed.length) setCurrentIndex(0);
+          let photoPath = String(student.photourl || "")
+            .trim()
+            .replace(/^"|"$/g, "");
+          let photoBase64 = "";
+
+          try {
+            if (photoPath.startsWith("data:image")) {
+              // ✅ Base64 in Excel
+              photoBase64 = photoPath;
+            } else if (photoPath.startsWith("http")) {
+              // ✅ Remote URL → Base64
+              const res = await fetch(photoPath);
+              const blob = await res.blob();
+              photoBase64 = await blobToBase64(blob);
+            } else if (
+              photoPath.startsWith("C:\\") ||
+              photoPath.startsWith("/") ||
+              photoPath.includes(":\\")
+            ) {
+              // 🚫 Local paths ignored
+              console.warn(`⚠️ Local path ignored: ${photoPath}`);
+              photoBase64 = "/student-photo.jpg";
+            } else {
+              // Fallback
+              photoBase64 = "/student-photo.jpg";
+            }
+          } catch (err) {
+            console.error("❌ Error converting photo:", err);
+            photoBase64 = "/student-photo.jpg";
+          }
+
+          return {
+            studentId: String(student.studentid || `S-${idx + 1}`),
+            name: String(student.name || ""),
+            className: String(student.classname || student.class || ""),
+            section: String(student.section || ""),
+            dob: String(student.dob || ""),
+            phone: String(student.phone || ""),
+            address: String(student.address || ""),
+            photoUrl: photoBase64,
+          };
+        })
+      );
+
+      console.log("✅ Excel processed:", processed);
+      setStudents(processed);
+      if (processed.length) setCurrentIndex(0);
     } catch (err) {
-      console.error("XLSX parse error:", err);
-      alert("Failed to parse file. Please check the format.");
+      console.error("❌ XLSX parse error:", err);
+      alert("Failed to parse Excel file.");
     } finally {
       e.target.value = "";
     }
   }
 
+  // ---------- CSV Upload ----------
   async function handleCSVUpload(e) {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
       const text = await file.text();
+      console.log("CSV Text:", text);
       const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean);
       const headers = headerLine.split(",").map((h) => h.trim());
-      const rows = lines.map((line, idx) => {
+      const rows = lines.map((line) => {
         const cols = line.split(",").map((c) => c.trim());
-        const rowObj = Object.fromEntries(
-          headers.map((h, i) => [h, cols[i] || ""])
-        );
-        return {
-          id: String(rowObj.studentId || rowObj.id || `S-${idx + 1}`),
-          name: String(rowObj.name || ""),
-          className: String(rowObj.class || rowObj.className || ""),
-          section: String(rowObj.section || ""),
-          dob: String(rowObj.dob || ""),
-          phone: String(rowObj.phone || ""),
-          address: String(rowObj.address || ""),
-          photoUrl: String(rowObj.photoUrl || ""),
-        };
+        const obj = {};
+        headers.forEach((h, i) => (obj[h] = cols[i]));
+        return obj;
       });
 
-      setStudents(rows.length ? rows : students);
-      if (rows.length) setCurrentIndex(0);
+      await processStudents(rows);
     } catch (err) {
-      console.error("CSV parse error:", err);
-      alert("Failed to parse CSV. Please check the file.");
+      console.error("❌ CSV parse error:", err);
+      alert("Failed to parse CSV file.");
+    } finally {
+      e.target.value = "";
+    }
+  }
+
+  // ---------- Photo Upload ----------
+  function handlePhotosUpload(e) {
+    const files = Array.from(e.target.files || []);
+    setUploadedPhotos(files);
+    alert(`${files.length} student photos loaded for matching.`);
+  }
+
+  // ---------- School Image Uploads ----------
+  async function handleImageUpload(e, key) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await readFileAsDataURL(file);
+      setSchool({ ...school, [key]: dataUrl });
+    } catch {
+      alert("Failed to upload image.");
+    } finally {
+      e.target.value = "";
+    }
+  }
+
+  async function handlePhotoUpload(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await readFileAsDataURL(file);
+      const next = [...students];
+      next[currentIndex] = { ...next[currentIndex], photoUrl: dataUrl };
+      setStudents(next);
+    } catch {
+      alert("Failed to read photo file.");
     } finally {
       e.target.value = "";
     }
@@ -148,32 +330,6 @@ export function DataUploader({
     if (!next[currentIndex]) return;
     next[currentIndex] = { ...next[currentIndex], [key]: value };
     setStudents(next);
-  }
-
-  async function handlePhotoUpload(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const dataUrl = await readFileAsDataURL(file);
-      updateField("photoUrl", dataUrl);
-    } catch {
-      alert("Failed to read photo file.");
-    } finally {
-      e.target.value = "";
-    }
-  }
-
-  async function handleImageUpload(e, key) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const dataUrl = await readFileAsDataURL(file);
-      setSchool({ ...school, [key]: dataUrl });
-    } catch {
-      alert("Failed to upload image.");
-    } finally {
-      e.target.value = "";
-    }
   }
 
   const currentStudent = students[currentIndex];
@@ -216,7 +372,6 @@ export function DataUploader({
 
       {/* School Section */}
       <h2 className="mb-3 text-lg font-medium">School Details</h2>
-
       <div className="mb-4 border rounded-md">
         <button
           onClick={() => setShowSchoolDetails(!showSchoolDetails)}
@@ -297,7 +452,7 @@ export function DataUploader({
                 </button>
                 {school.principalSign && (
                   <img
-                    src={school.principalSign}
+                    src={school.principalSign || "/image.png"}
                     alt="Principal Sign"
                     className="mt-2 h-16 w-24 rounded-md border object-contain shadow"
                   />
@@ -369,7 +524,7 @@ export function DataUploader({
             <label className="text-sm">
               <span className="mb-1 block">Student ID</span>
               <input
-                value={currentStudent.id}
+                value={currentStudent.studentId}
                 onChange={(e) => updateField("id", e.target.value)}
                 className="w-full rounded-md border bg-background p-2"
               />
@@ -418,13 +573,40 @@ export function DataUploader({
             </label>
 
             <label className="text-sm">
-              <span className="mb-1 block">Photo (URL)</span>
+              <span className="mb-1 block">Photo</span>
+
+              {/* Text input for optional direct URL */}
               <input
-                placeholder="https://..."
-                value={currentStudent.photoUrl}
+                type="text"
+                placeholder="https://... or upload below"
+                value={currentStudent.photoUrl || ""}
                 onChange={(e) => updateField("photoUrl", e.target.value)}
-                className="w-full rounded-md border bg-background p-2"
+                className="w-full rounded-md border bg-background p-2 mb-2"
               />
+
+              {/* File input for local photo upload */}
+              <input
+                type="file"
+                accept="image/*"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+
+                  // Convert selected photo to base64
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    updateField("photoUrl", reader.result); // set base64
+                  };
+                  reader.onerror = (err) => {
+                    console.error("Error reading photo:", err);
+                    alert("Failed to load image");
+                  };
+                  reader.readAsDataURL(file);
+                }}
+                className="w-full text-sm mt-1"
+              />
+
+              {/* Image Preview */}
               {currentStudent.photoUrl && (
                 <div className="mt-2 flex justify-center">
                   <img
@@ -474,12 +656,6 @@ export function DataUploader({
       ) : (
         <p className="text-sm text-muted-foreground mt-3">No students yet.</p>
       )}
-
-      <div className="flex justify-between items-center gap-2 mt-3">
-        <button className="rounded-md border px-3 py-2" onClick={addBlank}>
-          Add Student
-        </button>
-      </div>
     </div>
   );
 }
