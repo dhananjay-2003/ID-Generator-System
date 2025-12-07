@@ -19,8 +19,29 @@ import { Template17 } from "./template-17";
 import { Template18 } from "./template-18";
 import { Template19 } from "./template-19";
 import { Template20 } from "./template-20";
+import { VerticalTemplate } from "./verticalTemplate";
+import { VerticalTemplate2 } from "./vertical-template2";
+import { VerticalTemplate3 } from "./vertical-template3";
+import { VerticalTemplate4 } from "./vertical-template4";
+import { VerticalTemplate5 } from "./vertical-template5";
+import { VerticalTemplate6 } from "./vertical-template6";
+import { VerticalTemplate7 } from "./vertical-template7";
+import { VerticalTemplate8 } from "./vertical-template8";
+import { VerticalTemplate9 } from "./vertical-template9";
+import { VerticalTemplate10 } from "./vertical-template10";
 
 export const TEMPLATES = {
+  "vertical-1": VerticalTemplate,
+  "vertical-2": VerticalTemplate2,
+  "vertical-3": VerticalTemplate3,
+  "vertical-4": VerticalTemplate4,
+  "vertical-5": VerticalTemplate5,
+  "vertical-6": VerticalTemplate6,
+  "vertical-7": VerticalTemplate7,
+  "vertical-8": VerticalTemplate8,
+  "vertical-9": VerticalTemplate9,
+  "vertical-10": VerticalTemplate10,
+
   "template-1": Template1,
   "template-2": Template2,
   "template-3": Template3,

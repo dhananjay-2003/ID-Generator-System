@@ -22,6 +22,14 @@
       "@/*": ["./*"]
     }
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts", "components/templates/template-9.jsx", "components/templates/index.jsx"],
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "components/templates/template-9.jsx",
+    "components/templates/index.jsx",
+    "components/templates/verticalTemplate.jsx"
+  ],
   "exclude": ["node_modules"]
 }

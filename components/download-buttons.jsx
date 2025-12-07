@@ -37,23 +37,24 @@ async function waitForFonts() {
   if (document?.fonts?.ready) {
     try {
       await document.fonts.ready;
-    } catch {
-      /* ignore font load errors */
-    }
+    } catch {}
   }
 }
 
-// ✅ Perfect-capture function (uses html-to-image)
 async function captureNode(node) {
   await waitForImages(node);
   await waitForFonts();
   await wait(30);
 
-  const width = 410;
-  const height = 260;
-  const scale = 2; // High DPI output
+  // Detect orientation
+  const isVertical = node.dataset.orientation === "vertical";
 
-  const dataUrl = await htmlToImage.toPng(node, {
+  const width = isVertical ? 260 : 410;
+  const height = isVertical ? 410 : 260;
+
+  const scale = 2;
+
+  return await htmlToImage.toPng(node, {
     backgroundColor: "#ffffff",
     width,
     height,
@@ -64,29 +65,20 @@ async function captureNode(node) {
       fontSmoothing: "antialiased",
     },
   });
-
-  return dataUrl;
 }
 
-export function DownloadButtons({
-  templateKey,
-  Templates,
-  school,
-  fields,
-  students,
-}) {
+export function DownloadButtons({ templateKey, school, fields, students }) {
   const HiddenContainer = useRef(null);
   const [isExporting, setIsExporting] = useState(false);
 
-  // ✅ Export only current preview as PNG
+  const isVertical = templateKey.startsWith("vertical");
+  const TemplateComp = TEMPLATES[templateKey] || TemplateBase;
+
   async function exportPNGCurrent() {
     try {
       setIsExporting(true);
       const node = document.querySelector("[data-html2canvas-card]");
-      if (!node) {
-        alert("Preview not found. Please render a student first.");
-        return;
-      }
+      if (!node) return alert("Preview not found.");
       const dataUrl = await captureNode(node);
       const a = document.createElement("a");
       a.href = dataUrl;
@@ -97,7 +89,6 @@ export function DownloadButtons({
     }
   }
 
-  // ✅ Export all students as zipped PNGs
   async function exportPNGBulk() {
     try {
       setIsExporting(true);
@@ -110,10 +101,10 @@ export function DownloadButtons({
       );
 
       for (let i = 0; i < cards.length; i++) {
-        const card = cards[i];
-        const dataUrl = await captureNode(card);
-        const base64 = dataUrl.split(",")[1];
-        zip.file(`id-card-${i + 1}.png`, base64, { base64: true });
+        const dataUrl = await captureNode(cards[i]);
+        zip.file(`id-card-${i + 1}.png`, dataUrl.split(",")[1], {
+          base64: true,
+        });
         await wait(20);
       }
 
@@ -129,11 +120,11 @@ export function DownloadButtons({
     }
   }
 
-  // ✅ Export all students as a multi-page PDF
   async function exportPDF() {
     try {
       setIsExporting(true);
       const pdf = new jsPDF({ unit: "mm", format: "a4" });
+
       const container = HiddenContainer.current;
       if (!container) return;
 
@@ -141,38 +132,38 @@ export function DownloadButtons({
         container.querySelectorAll("[data-html2canvas-card]")
       );
 
-      const cardWidth = 85.6; // mm
-      const cardHeight = 54; // mm
-      const marginX = 10;
-      const marginY = 10;
-      const gapX = 8;
-      const gapY = 8;
-      const cardsPerRow = 2;
-      const cardsPerCol = 4;
+      // Card dimensions in mm (vertical template)
+      const cardWidth = isVertical ? 54 : 85.6;
+      const cardHeight = isVertical ? 85.6 : 54;
 
-      let x = marginX;
-      let y = marginY;
-      let cardCount = 0;
+      const gapX = 8; // horizontal gap between cards
+      const gapY = 8; // vertical gap
+      const marginLeft = 10;
+      const marginTop = 10;
+
+      let x = marginLeft;
+      let y = marginTop;
+
+      const cardsPerRow = isVertical ? 3 : 2; // 3 cards per row horizontally for vertical template
 
       for (let i = 0; i < cards.length; i++) {
         const dataUrl = await captureNode(cards[i]);
+
         pdf.addImage(dataUrl, "PNG", x, y, cardWidth, cardHeight);
 
-        cardCount++;
         x += cardWidth + gapX;
 
-        if (cardCount % cardsPerRow === 0) {
-          x = marginX;
+        // Move to next row if row is full
+        if ((i + 1) % cardsPerRow === 0) {
+          x = marginLeft;
           y += cardHeight + gapY;
         }
 
-        if (
-          cardCount % (cardsPerRow * cardsPerCol) === 0 &&
-          i < cards.length - 1
-        ) {
+        // Add new page if y exceeds page height
+        if (y + cardHeight > 287 && i < cards.length - 1) {
           pdf.addPage();
-          x = marginX;
-          y = marginY;
+          x = marginLeft;
+          y = marginTop;
         }
 
         await wait(20);
@@ -184,13 +175,11 @@ export function DownloadButtons({
     }
   }
 
-  const TemplateComp = TEMPLATES[templateKey] || TemplateBase;
-
   return (
     <div className="rounded-lg border bg-card p-4">
       <h2 className="mb-2 text-lg font-medium">Export</h2>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex gap-2 flex-wrap">
         <button
           className="rounded-md bg-primary px-3 py-2 text-primary-foreground disabled:opacity-50"
           onClick={exportPNGCurrent}
@@ -216,7 +205,7 @@ export function DownloadButtons({
         </button>
       </div>
 
-      {/* Hidden container for bulk/PDF exports */}
+      {/* Hidden container for bulk/PDF capture */}
       <div
         ref={HiddenContainer}
         aria-hidden="true"
@@ -224,10 +213,6 @@ export function DownloadButtons({
           position: "absolute",
           left: "-10000px",
           top: "0px",
-          width: "410px",
-          height: "260px",
-          visibility: "visible",
-          pointerEvents: "none",
         }}
       >
         <div style={{ "--accent": school?.accent }}>
@@ -235,20 +220,16 @@ export function DownloadButtons({
             <div
               key={i}
               data-html2canvas-card
+              data-orientation={isVertical ? "vertical" : "horizontal"}
               style={{
-                width: "410px",
-                height: "260px",
+                width: isVertical ? "260px" : "410px",
+                height: isVertical ? "410px" : "260px",
                 overflow: "hidden",
                 borderRadius: "12px",
                 marginBottom: "12px",
               }}
             >
-              <TemplateComp
-                data-template-frame
-                school={school}
-                fields={fields}
-                student={s}
-              />
+              <TemplateComp school={school} fields={fields} student={s} />
             </div>
           ))}
         </div>

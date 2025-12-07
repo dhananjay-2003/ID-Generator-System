@@ -5,6 +5,13 @@ import { TEMPLATE_LIST } from "./templates";
 export function TemplateSelector({ templateKey, setTemplateKey }) {
   const [activeTab, setActiveTab] = useState("vertical");
 
+  // Filter templates by tab (vertical/horizontal)
+  const filteredTemplates = TEMPLATE_LIST.filter((key) =>
+    activeTab === "vertical"
+      ? key.startsWith("vertical")
+      : key.startsWith("template")
+  );
+
   return (
     <div className="rounded-lg border bg-card p-4">
       {/* Header with Tabs */}
@@ -22,6 +29,7 @@ export function TemplateSelector({ templateKey, setTemplateKey }) {
           >
             Vertical
           </button>
+
           <button
             onClick={() => setActiveTab("horizontal")}
             className={`px-3 py-1 text-sm rounded-md border ${
@@ -35,9 +43,9 @@ export function TemplateSelector({ templateKey, setTemplateKey }) {
         </div>
       </div>
 
-      {/* Templates (same for both tabs for now) */}
+      {/* Templates */}
       <div className="flex gap-3 overflow-x-auto pb-2 no-scrollbar">
-        {TEMPLATE_LIST.map((key) => {
+        {filteredTemplates.map((key) => {
           const isActive = key === templateKey;
           return (
             <button

@@ -2,12 +2,23 @@
 import { useRef, useState } from "react";
 import * as XLSX from "xlsx";
 
+// Utility: Convert File to Base64
 function readFileAsDataURL(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result);
     reader.onerror = reject;
     reader.readAsDataURL(file);
+  });
+}
+
+// Utility: Convert Blob to Base64
+function blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(reader.result);
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
   });
 }
 
@@ -60,40 +71,7 @@ export function DataUploader({
     }
   }
 
-  // ---------- Normalize Headers ----------
-  function normalizeHeaders(rows) {
-    return rows.map((row) => {
-      const clean = {};
-      Object.keys(row).forEach((key) => {
-        const normalizedKey = key.trim().replace(/\s+/g, "").toLowerCase();
-        clean[normalizedKey] = row[key];
-      });
-      return clean;
-    });
-  }
-
-  // ---------- File Processing ----------
-  // ---------- Convert Blob → Base64 ----------
-  function blobToBase64(blob) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onloadend = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(blob);
-    });
-  }
-
-  // ---------- Read File → Base64 ----------
-  function readFileAsDataURL(file) {
-    return new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(reader.result);
-      reader.onerror = reject;
-      reader.readAsDataURL(file);
-    });
-  }
-
-  // ---------- Process Students ----------
+  // ---------- Process Students with Photo Matching ----------
   async function processStudents(rows, uploadedPhotos = []) {
     console.log("Processing rows:", rows);
     if (!rows.length) return;
@@ -142,21 +120,21 @@ export function DataUploader({
             rawPhoto.includes(":\\")
           ) {
             console.warn(`⚠️ Local path ignored: ${rawPhoto}`);
-            resolvedPhoto = "/student-photo.jpg";
+            resolvedPhoto = "";
           }
           // 🧩 5. Fallback default
           else {
-            resolvedPhoto = "/student-photo.jpg";
+            resolvedPhoto = "";
           }
         } catch (err) {
           console.error("❌ Error resolving photo:", err);
-          resolvedPhoto = "/student-photo.jpg";
+          resolvedPhoto = "";
         }
 
         return {
           studentId: String(row.studentid || `S-${idx + 1}`),
           name: String(row.name || ""),
-          className: String(row.studentid || row.class || ""),
+          className: String(row.classname || row.class || ""),
           section: String(row.section || ""),
           dob: String(row.dob || ""),
           phone: String(row.phone || ""),
@@ -196,11 +174,16 @@ export function DataUploader({
           let photoBase64 = "";
 
           try {
-            if (photoPath.startsWith("data:image")) {
-              // ✅ Base64 in Excel
+            const fileName = photoPath.split("\\").pop().split("/").pop();
+            const matched = uploadedPhotos.find(
+              (f) => f.name.toLowerCase() === fileName.toLowerCase()
+            );
+
+            if (matched) {
+              photoBase64 = await readFileAsDataURL(matched);
+            } else if (photoPath.startsWith("data:image")) {
               photoBase64 = photoPath;
             } else if (photoPath.startsWith("http")) {
-              // ✅ Remote URL → Base64
               const res = await fetch(photoPath);
               const blob = await res.blob();
               photoBase64 = await blobToBase64(blob);
@@ -209,16 +192,14 @@ export function DataUploader({
               photoPath.startsWith("/") ||
               photoPath.includes(":\\")
             ) {
-              // 🚫 Local paths ignored
               console.warn(`⚠️ Local path ignored: ${photoPath}`);
-              photoBase64 = "/student-photo.jpg";
+              photoBase64 = "";
             } else {
-              // Fallback
-              photoBase64 = "/student-photo.jpg";
+              photoBase64 = "";
             }
           } catch (err) {
             console.error("❌ Error converting photo:", err);
-            photoBase64 = "/student-photo.jpg";
+            photoBase64 = "";
           }
 
           return {
@@ -254,15 +235,15 @@ export function DataUploader({
       const text = await file.text();
       console.log("CSV Text:", text);
       const [headerLine, ...lines] = text.split(/\r?\n/).filter(Boolean);
-      const headers = headerLine.split(",").map((h) => h.trim());
+      const headers = headerLine.split(",").map((h) => h.trim().toLowerCase());
       const rows = lines.map((line) => {
         const cols = line.split(",").map((c) => c.trim());
         const obj = {};
-        headers.forEach((h, i) => (obj[h] = cols[i]));
+        headers.forEach((h, i) => (obj[h] = cols[i] || ""));
         return obj;
       });
 
-      await processStudents(rows);
+      await processStudents(rows, uploadedPhotos);
     } catch (err) {
       console.error("❌ CSV parse error:", err);
       alert("Failed to parse CSV file.");
@@ -292,44 +273,27 @@ export function DataUploader({
     }
   }
 
-  async function handlePhotoUpload(e) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    try {
-      const dataUrl = await readFileAsDataURL(file);
-      const next = [...students];
-      next[currentIndex] = { ...next[currentIndex], photoUrl: dataUrl };
-      setStudents(next);
-    } catch {
-      alert("Failed to read photo file.");
-    } finally {
-      e.target.value = "";
-    }
-  }
-
-  function addBlank() {
-    const next = [
-      ...students,
-      {
-        id: `S-${students.length + 1}`,
-        name: "",
-        className: "",
-        section: "",
-        dob: "",
-        phone: "",
-        address: "",
-        photoUrl: "",
-      },
-    ];
-    setStudents(next);
-    setCurrentIndex(next.length - 1);
-  }
-
   function updateField(key, value) {
     const next = [...students];
     if (!next[currentIndex]) return;
     next[currentIndex] = { ...next[currentIndex], [key]: value };
     setStudents(next);
+  }
+
+  function addNewStudent() {
+    const newStudent = {
+      studentId: `S-${students.length + 1}`,
+      name: "",
+      className: "",
+      section: "",
+      dob: "",
+      phone: "",
+      address: "",
+      photoUrl: "",
+    };
+    const next = [...students, newStudent];
+    setStudents(next);
+    setCurrentIndex(next.length - 1);
   }
 
   const currentStudent = students[currentIndex];
@@ -340,14 +304,14 @@ export function DataUploader({
       {/* Import Buttons */}
       <div className="grid grid-cols-2 gap-2 mb-3">
         <button
-          className="rounded-md bg-primary px-3 py-2 text-primary-foreground"
+          className="rounded-md bg-blue-600 hover:bg-blue-700 px-3 py-2 text-white"
           onClick={() => fileRef.current?.click()}
         >
           Import XLSX
         </button>
         <button
           onClick={() => downloadSampleSheet("csv")}
-          className="rounded-md bg-primary px-3 py-2 text-primary-foreground"
+          className="rounded-md bg-blue-600 hover:bg-blue-700 px-3 py-2 text-white"
         >
           Download Sample CSV
         </button>
@@ -357,71 +321,86 @@ export function DataUploader({
           type="file"
           accept=".xlsx,.xls"
           onChange={handleSheetUpload}
-          className="sr-only"
+          className="hidden"
         />
 
         <label className="col-span-2 block">
+          <span className="text-sm font-medium mb-1 block">Upload CSV</span>
           <input
             type="file"
             accept=".csv"
             onChange={handleCSVUpload}
-            className="w-full rounded-md border bg-background p-2"
+            className="w-full rounded-md border p-2"
+          />
+        </label>
+
+        <label className="col-span-2 block">
+          <span className="text-sm font-medium mb-1 block">
+            Upload Student Photos (Optional)
+          </span>
+          <input
+            ref={photosRef}
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={handlePhotosUpload}
+            className="w-full rounded-md border p-2"
           />
         </label>
       </div>
 
       {/* School Section */}
-      <h2 className="mb-3 text-lg font-medium">School Details</h2>
+      <h2 className="mb-3 text-lg font-semibold">School Details</h2>
       <div className="mb-4 border rounded-md">
         <button
           onClick={() => setShowSchoolDetails(!showSchoolDetails)}
-          className="w-full flex justify-between items-center p-3 font-medium text-left"
+          className="w-full flex justify-between items-center p-3 font-medium text-left hover:bg-gray-50"
         >
           <span>School Details</span>
           <span className="text-lg">{showSchoolDetails ? "▲" : "▼"}</span>
         </button>
 
         {showSchoolDetails && (
-          <div className="space-y-3 p-4 border-t bg-background">
+          <div className="space-y-3 p-4 border-t">
             <label className="text-sm block">
-              <span className="mb-1 block">School Name</span>
+              <span className="mb-1 block font-medium">School Name</span>
               <input
                 value={school.schoolName}
                 onChange={(e) =>
                   setSchool({ ...school, schoolName: e.target.value })
                 }
-                className="w-full rounded-md border bg-background p-2"
+                className="w-full rounded-md border p-2"
               />
             </label>
 
             <label className="text-sm block">
-              <span className="mb-1 block">Contact Details</span>
+              <span className="mb-1 block font-medium">Contact Details</span>
               <input
                 value={school.contact}
                 onChange={(e) =>
                   setSchool({ ...school, contact: e.target.value })
                 }
-                className="w-full rounded-md border bg-background p-2"
+                className="w-full rounded-md border p-2"
               />
             </label>
 
             <label className="text-sm block">
-              <span className="mb-1 block">School Address</span>
+              <span className="mb-1 block font-medium">School Address</span>
               <input
                 value={school.schoolAddress}
                 onChange={(e) =>
                   setSchool({ ...school, schoolAddress: e.target.value })
                 }
-                className="w-full rounded-md border bg-background p-2"
+                className="w-full rounded-md border p-2"
               />
             </label>
 
             {/* Logo, Sign, Stamp */}
             <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col items-center border rounded-md p-2">
-                <span className="text-sm mb-2">School Logo</span>
+              <div className="flex flex-col items-center border rounded-md p-3">
+                <span className="text-sm font-medium mb-2">School Logo</span>
                 <button
-                  className="rounded-md border px-3 py-1 text-sm"
+                  className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
                   onClick={() => logoRef.current?.click()}
                 >
                   Upload Logo
@@ -430,47 +409,47 @@ export function DataUploader({
                   <img
                     src={school.logo}
                     alt="Logo Preview"
-                    className="mt-2 h-16 w-16 rounded-md border object-contain shadow"
+                    className="mt-2 h-16 w-16 rounded-md border object-contain"
                   />
                 )}
                 <input
                   ref={logoRef}
                   type="file"
                   accept="image/*"
-                  className="sr-only"
+                  className="hidden"
                   onChange={(e) => handleImageUpload(e, "logo")}
                 />
               </div>
 
-              <div className="flex flex-col items-center border rounded-md p-2">
-                <span className="text-sm mb-2">Principal Sign</span>
+              <div className="flex flex-col items-center border rounded-md p-3">
+                <span className="text-sm font-medium mb-2">Principal Sign</span>
                 <button
-                  className="rounded-md border px-3 py-1 text-sm"
+                  className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
                   onClick={() => principalSignRef.current?.click()}
                 >
                   Upload Sign
                 </button>
                 {school.principalSign && (
                   <img
-                    src={school.principalSign || "/image.png"}
+                    src={school.principalSign}
                     alt="Principal Sign"
-                    className="mt-2 h-16 w-24 rounded-md border object-contain shadow"
+                    className="mt-2 h-16 w-24 rounded-md border object-contain"
                   />
                 )}
                 <input
                   ref={principalSignRef}
                   type="file"
                   accept="image/*"
-                  className="sr-only"
+                  className="hidden"
                   onChange={(e) => handleImageUpload(e, "principalSign")}
                 />
               </div>
             </div>
 
-            <div className="flex flex-col items-center border rounded-md p-2 mt-2">
-              <span className="text-sm mb-2">School Stamp</span>
+            <div className="flex flex-col items-center border rounded-md p-3">
+              <span className="text-sm font-medium mb-2">School Stamp</span>
               <button
-                className="rounded-md border px-3 py-1 text-sm"
+                className="rounded-md border px-3 py-1.5 text-sm hover:bg-gray-50"
                 onClick={() => stampRef.current?.click()}
               >
                 Upload Stamp
@@ -479,27 +458,27 @@ export function DataUploader({
                 <img
                   src={school.schoolStamp}
                   alt="School Stamp"
-                  className="mt-2 h-16 w-16 rounded-md border object-contain shadow"
+                  className="mt-2 h-16 w-16 rounded-md border object-contain"
                 />
               )}
               <input
                 ref={stampRef}
                 type="file"
                 accept="image/*"
-                className="sr-only"
+                className="hidden"
                 onChange={(e) => handleImageUpload(e, "schoolStamp")}
               />
             </div>
 
             <label className="text-sm block mt-3">
-              <span className="mb-1 block">Accent Color</span>
+              <span className="mb-1 block font-medium">Accent Color</span>
               <input
                 type="color"
                 value={school.accent}
                 onChange={(e) =>
                   setSchool({ ...school, accent: e.target.value })
                 }
-                className="h-10 w-full cursor-pointer rounded-md border bg-background p-1"
+                className="h-10 w-full cursor-pointer rounded-md border p-1"
               />
             </label>
           </div>
@@ -507,154 +486,146 @@ export function DataUploader({
       </div>
 
       {/* Student Data Section */}
-      <h2 className="mb-2 text-lg font-medium">Student Data</h2>
-      <hr className="border-border" />
+      <h2 className="mb-2 text-lg font-semibold">Student Data</h2>
+      <hr className="border-gray-300 mb-3" />
 
       {currentStudent ? (
-        <div className="space-y-2 mt-3">
-          <div className="grid grid-cols-2 gap-2">
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
             <label className="text-sm">
-              <span className="mb-1 block">Name</span>
+              <span className="mb-1 block font-medium">Name</span>
               <input
                 value={currentStudent.name}
                 onChange={(e) => updateField("name", e.target.value)}
-                className="w-full rounded-md border bg-background p-2"
+                className="w-full rounded-md border p-2"
               />
             </label>
             <label className="text-sm">
-              <span className="mb-1 block">Student ID</span>
+              <span className="mb-1 block font-medium">Student ID</span>
               <input
                 value={currentStudent.studentId}
-                onChange={(e) => updateField("id", e.target.value)}
-                className="w-full rounded-md border bg-background p-2"
+                onChange={(e) => updateField("studentId", e.target.value)}
+                className="w-full rounded-md border p-2"
               />
             </label>
             <label className="text-sm">
-              <span className="mb-1 block">Class</span>
+              <span className="mb-1 block font-medium">Class</span>
               <input
                 value={currentStudent.className}
                 onChange={(e) => updateField("className", e.target.value)}
-                className="w-full rounded-md border bg-background p-2"
+                className="w-full rounded-md border p-2"
               />
             </label>
             <label className="text-sm">
-              <span className="mb-1 block">Section</span>
+              <span className="mb-1 block font-medium">Section</span>
               <input
                 value={currentStudent.section}
                 onChange={(e) => updateField("section", e.target.value)}
-                className="w-full rounded-md border bg-background p-2"
+                className="w-full rounded-md border p-2"
               />
             </label>
             <label className="text-sm">
-              <span className="mb-1 block">DOB</span>
+              <span className="mb-1 block font-medium">DOB</span>
               <input
                 type="date"
                 value={currentStudent.dob}
                 onChange={(e) => updateField("dob", e.target.value)}
-                className="w-full rounded-md border bg-background p-2"
+                className="w-full rounded-md border p-2"
               />
             </label>
             <label className="text-sm">
-              <span className="mb-1 block">Phone</span>
+              <span className="mb-1 block font-medium">Phone</span>
               <input
                 value={currentStudent.phone}
                 onChange={(e) => updateField("phone", e.target.value)}
-                className="w-full rounded-md border bg-background p-2"
+                className="w-full rounded-md border p-2"
               />
             </label>
 
             <label className="col-span-2 text-sm">
-              <span className="mb-1 block">Student Address</span>
+              <span className="mb-1 block font-medium">Student Address</span>
               <input
                 value={currentStudent.address}
                 onChange={(e) => updateField("address", e.target.value)}
-                className="w-full rounded-md border bg-background p-2"
+                className="w-full rounded-md border p-2"
               />
             </label>
 
-            <label className="text-sm">
-              <span className="mb-1 block">Photo</span>
-
-              {/* Text input for optional direct URL */}
-              <input
-                type="text"
-                placeholder="https://... or upload below"
-                value={currentStudent.photoUrl || ""}
-                onChange={(e) => updateField("photoUrl", e.target.value)}
-                className="w-full rounded-md border bg-background p-2 mb-2"
-              />
-
-              {/* File input for local photo upload */}
+            <label className="col-span-2 text-sm">
+              <span className="mb-1 block font-medium">Student Photo</span>
               <input
                 type="file"
                 accept="image/*"
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
                   if (!file) return;
-
-                  // Convert selected photo to base64
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    updateField("photoUrl", reader.result); // set base64
-                  };
-                  reader.onerror = (err) => {
+                  try {
+                    const dataUrl = await readFileAsDataURL(file);
+                    updateField("photoUrl", dataUrl);
+                  } catch (err) {
                     console.error("Error reading photo:", err);
                     alert("Failed to load image");
-                  };
-                  reader.readAsDataURL(file);
+                  }
                 }}
-                className="w-full text-sm mt-1"
+                className="w-full rounded-md border p-2"
               />
-
-              {/* Image Preview */}
               {currentStudent.photoUrl && (
-                <div className="mt-2 flex justify-center">
+                <div className="mt-3 flex justify-center">
                   <img
                     src={currentStudent.photoUrl}
                     alt="Student Preview"
-                    className="h-24 w-24 rounded-md border object-cover shadow"
+                    className="h-32 w-32 rounded-md border object-cover"
                   />
                 </div>
               )}
             </label>
-
-            <label className="text-sm">
-              <span className="mb-1 block">Photo (Upload)</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={handlePhotoUpload}
-                className="w-full rounded-md border bg-background p-2"
-              />
-            </label>
           </div>
 
-          <div className="flex items-center justify-between pt-2">
-            <div className="text-sm text-muted-foreground">
-              {currentIndex + 1} / {students.length}
+          <div className="flex items-center justify-between pt-3 border-t">
+            <div className="text-sm font-medium text-gray-600">
+              Student {currentIndex + 1} of {students.length}
             </div>
             <div className="flex gap-2">
               <button
-                className="rounded-md border px-2 py-1"
+                className="rounded-md border px-4 py-1.5 hover:bg-gray-50 disabled:opacity-50"
                 onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
+                disabled={currentIndex === 0}
               >
-                Prev
+                ← Prev
               </button>
               <button
-                className="rounded-md border px-2 py-1"
+                className="rounded-md border px-4 py-1.5 hover:bg-gray-50 disabled:opacity-50"
                 onClick={() =>
                   setCurrentIndex(
                     Math.min(students.length - 1, currentIndex + 1)
                   )
                 }
+                disabled={currentIndex === students.length - 1}
               >
-                Next
+                Next →
               </button>
             </div>
           </div>
+
+          <button
+            className="w-full rounded-md bg-green-600 hover:bg-green-700 px-4 py-2 text-white font-medium"
+            onClick={addNewStudent}
+          >
+            ➕ Add New Student
+          </button>
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground mt-3">No students yet.</p>
+        <div className="text-center py-8">
+          <p className="text-sm text-gray-500 mb-4">
+            No students yet. Add your first student!
+          </p>
+          <button
+            className="rounded-md bg-green-600 hover:bg-green-700 px-6 py-2 text-white font-medium"
+            onClick={addNewStudent}
+          >
+            ➕ Add First Student
+          </button>
+        </div>
       )}
     </div>
   );

@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { DataUploader } from "./data-uploader";
 import { TemplateSelector } from "./template-selector";
 import { CardEditor } from "./card-editor";
@@ -45,11 +45,50 @@ export function StudentIDApp() {
   const [fields, setFields] = useState(defaultFields);
   const [templateKey, setTemplateKey] = useState(Object.keys(TEMPLATES)[0]);
   const [activeTab, setActiveTab] = useState(0); // 0 = Templates, 1 = Editor
+  const [loading, setLoading] = useState(true);
 
   const currentStudent = students[currentIndex] || null;
   const Templates = useMemo(() => TEMPLATES, []);
-
   const tabs = ["Template & Preview", "Editor & Export"];
+
+  // Simulate loading for 1 second (or until any data fetch completes)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 1000); // 1 second delay
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[100vh]">
+        <div className="text-center">
+          <div className="loader mb-4"></div>
+          <p className="text-gray-600 text-lg">Loading Student ID App...</p>
+        </div>
+        <style jsx>{`
+          .loader {
+            border: 6px solid #f3f3f3;
+            border-top: 6px solid #0ea5e9;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+          }
+
+          @keyframes spin {
+            0% {
+              transform: rotate(0deg);
+            }
+            100% {
+              transform: rotate(360deg);
+            }
+          }
+        `}</style>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full p-6 md:p-8">
